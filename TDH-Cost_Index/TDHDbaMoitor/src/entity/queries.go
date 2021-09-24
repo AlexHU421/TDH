@@ -1,5 +1,8 @@
 package entity
 
+import (
+	"strconv"
+)
 
 type JsonQuery struct {
 	Data []struct {
@@ -20,7 +23,7 @@ type JsonQuery struct {
 		JobsFailed          int64       `json:"jobsFailed"`
 		LogicalPlanString   interface{} `json:"logicalPlanString"`
 		LogicalPlanStrings  interface{} `json:"logicalPlanStrings"`
-		Message             interface{} `json:"message"`
+		Message             string `json:"message"`
 		Metrics             struct{}    `json:"metrics"`
 		Mode                interface{} `json:"mode"`
 		PhysicalPlanString  interface{} `json:"physicalPlanString"`
@@ -52,3 +55,30 @@ type JsonQuery struct {
 }
 
 
+type Query struct {
+	SqlID 				int64
+	User				string
+	Description			string
+	ExecutionFinishTime int64
+	ExecutionStartTime  int64
+	CompletionTime      int64
+	Message				string
+}
+
+func GetQueriesList (queies JsonQuery) map[string]Query{
+
+	querymap  := make(map[string]Query)
+		//fmt.Printf("%T",queies.Data)s
+	for _,v :=range queies.Data{
+		var query Query
+		query.SqlID=v.SqlID
+		query.CompletionTime=v.CompletionTime
+		query.Description=v.Description
+		query.ExecutionFinishTime=v.ExecutionFinishTime
+		query.ExecutionStartTime=v.ExecutionStartTime
+		query.User=v.User
+		query.Message=v.Message
+		querymap [queies.Query.DataKey+"||"+strconv.FormatInt(v.SqlID,10)]=query
+	}
+	return querymap
+}
