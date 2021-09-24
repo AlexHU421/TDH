@@ -47,40 +47,29 @@ func main() {
 	//fmt.Println(util.CrawlPage(url,token))
 
 	dataType , _ :=json.Marshal(util.JsonUnmarshalByString(util.CrawlPage(serverurl,token))["data"])
+	//Get lastserver map info    后续切片并发需存入redis做并发访问池
 	servermap :=entity.MapByJson(string(dataType))
 
-	for serverid,serverinfo :=range servermap{
-		fmt.Println(serverid,serverinfo.DataKey)
+	//Test look
+		for serverid,serverinfo :=range servermap{
+			fmt.Println(serverid,serverinfo.DataKey)
+		}
 
-
-
-	}
+	//Test  query数据量太大，需定时器定时获取
 	serverqueryurl :=queriesurl+"Inceptor::tdh2::9765c519-97cf-40e4-94cb-4154d03730e1"+"&dataSize=10"
 	fmt.Println(serverqueryurl)
 	fmt.Println(util.CrawlPage(serverqueryurl,token))
 
-//https://tdh2:4040/api/inceptor/sqls?dataKey=Inceptor::tdh2::fd707010-6098-462f-aa6e-e91d2a3b7843
+	//Get querymap info    后续切片并发需存入redis做并发访问池
+	querymap  := make(map[string]entity.Query)
+	var queies entity.JsonQuery
+	err := json.Unmarshal([]byte(util.CrawlPage(serverqueryurl,token)), &queies)
+	if err != nil{
+		panic(err)
+	}
+	querymap = entity.GetQueriesList(queies)
+	fmt.Println(querymap)
 
 
-
-	//sqlurl :=queriesurl+"Inceptor::tdh2::eeb97400-2c44-4b94-8c2c-4a9354244a3f"
-	//sqlurl :=queriesurl+"Inceptor::tdh2::75d3046c-da7b-40d6-87cf-ea840c4afdeb"
-	//fmt.Println(util.CrawlPage(sqlurl,token))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	//	<-tiker.C
-	//}
 
 }
