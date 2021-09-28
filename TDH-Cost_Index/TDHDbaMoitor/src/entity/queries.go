@@ -1,6 +1,9 @@
 package entity
 
-import "strconv"
+import (
+	"strconv"
+	"tdhdbamonithr/src/util"
+)
 
 type JsonQuery1 struct {
 	Data []struct {
@@ -79,12 +82,14 @@ type JsonQuery1 struct {
 
 type Query struct {
 	SqlID 				int64
+	State				string
+	Stages              []int64
 	User				string
 	Description			string
-	ExecutionFinishTime int64
-	ExecutionStartTime  int64
+	SubmissionTime		int64
 	CompletionTime      int64
 	Message				string
+
 }
 
 func GetQueriesList (queies JsonQuery1) map[string]Query{
@@ -92,15 +97,22 @@ func GetQueriesList (queies JsonQuery1) map[string]Query{
 	querymap  := make(map[string]Query)
 		//fmt.Printf("%T",queies.Data)s
 	for _,v :=range queies.Data{
+		if util.FilterBySQL(v.Description) ||
+			util.FilterByUnixtime(v.SubmissionTime,40,"secound") ||
+			util.FilterByState(v.State){
+		}else {
+
 		var query Query
 		query.SqlID=v.SqlID
+		query.State=v.State
 		query.CompletionTime=v.CompletionTime
 		query.Description=v.Description
-		query.ExecutionFinishTime=v.ExecutionFinishTime
-		query.ExecutionStartTime=v.ExecutionStartTime
+		query.SubmissionTime=v.SubmissionTime
 		query.User=v.User
 		query.Message=v.Message
 		querymap [queies.Query.DataKey+"||"+strconv.FormatInt(v.SqlID,10)]=query
+	}
+
 	}
 	return querymap
 }
