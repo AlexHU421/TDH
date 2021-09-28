@@ -1,0 +1,53 @@
+package util
+
+import (
+	"strings"
+	"time"
+)
+
+var(
+	SQLFilterList = []string{
+		"SELECT 1 FROM SYSTEM.DUAL",
+		"SET",
+		"USE",
+	}
+	StatesFilterList = []string{
+		"RUNNING",
+	}
+)
+
+
+
+
+func FilterByUnixtime (untime int64,filthour float32,filterformat string) bool{
+	switch filterformat {
+	case "hour":
+		return float32(UnixMillTime(time.Now().UnixNano())-untime)/1000/60/60 > filthour
+	case "minute":
+		return float32(UnixMillTime(time.Now().UnixNano())-untime)/1000/60 > filthour
+	case "secound":
+		return float32(UnixMillTime(time.Now().UnixNano())-untime)/1000 > filthour
+	}
+	return false
+}
+
+
+
+func FilterBySQL (str string) bool{
+	for _,s := range SQLFilterList{
+		if strings.HasPrefix(strings.ToUpper(str),s){
+			return true
+		}
+	}
+	return false
+}
+
+
+func FilterByState (str string) bool{
+	for _,s := range StatesFilterList{
+		if strings.HasPrefix(strings.ToUpper(str),s){
+			return true
+		}
+	}
+	return false
+}
