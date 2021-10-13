@@ -119,7 +119,7 @@ type JsonStage struct {
 
 
 
-type Task struct {
+type StageTaskInfo struct {
 	StageID 			int64
 	SqlID				int64
 	Status				string
@@ -130,15 +130,16 @@ type Task struct {
 }
 
 
-func GeTaskList (jsstage JsonStage) map[int]Task {
+
+func GeTaskList (jsstage JsonStage) map[int]StageTaskInfo {
 	var n sync.WaitGroup
-	taskmap := make(map[int]Task)
+	taskmap := make(map[int]StageTaskInfo)
 
 	for i := 0; i < len(jsstage.Data.Tasks); i++ {
 		n.Add(1)
 		go func (i int, n *sync.WaitGroup){
 			defer n.Done()
-			var task Task
+			var task StageTaskInfo
 			task.StageID=jsstage.Data.StageID
 			task.SqlID=jsstage.Data.SqlID
 			task.Status=jsstage.Data.Status
