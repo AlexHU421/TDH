@@ -33,6 +33,7 @@ func FilterByUnixtime (untime int64,filthour float32,filterformat string) bool{
 
 
 
+
 func FilterBySQL (str string) bool{
 	for _,s := range SQLFilterList{
 		if strings.HasPrefix(strings.ToUpper(str),s){
