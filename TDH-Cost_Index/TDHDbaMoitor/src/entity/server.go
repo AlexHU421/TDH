@@ -32,14 +32,12 @@ func MapByJson (dataString string) map[int]JsonServer{
 		}
 		activetimestamp,nilkey := activeservermap[server.Hosts]
 		if nilkey {
-			//fmt.Println("nilkey",server.ServerId,server.Hosts,server.Timestamp,"|+|",activeservermap)
 			if activetimestamp<server.Timestamp {
 				activetimestamp = server.Timestamp
 				activeservermap[server.Hosts]=server.Timestamp
 				servermapallinfo[server.Hosts]=server
 			}
 		}else {
-			//fmt.Println("existkey",server.ServerId,server.Hosts,server.Timestamp,"|+|",activeservermap)
 			if activetimestamp<server.Timestamp {
 				activetimestamp = server.Timestamp
 				activeservermap[server.Hosts]=server.Timestamp
@@ -48,9 +46,7 @@ func MapByJson (dataString string) map[int]JsonServer{
 		}
 	}
 	for _,v := range servermapallinfo{
-		//servermap =entity.MapByJson(v)
 		servermap[v.ServerId]=v
-		//delete(servermapallinfo,k)
 	}
 	return servermap
 }
