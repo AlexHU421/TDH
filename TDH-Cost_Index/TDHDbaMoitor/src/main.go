@@ -1,107 +1,148 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/Shopify/sarama"
+	"sync"
+	"tdhdbamonithr/src/api/querymap"
 	"tdhdbamonithr/src/entity"
+	"tdhdbamonithr/src/service/crawldetilspage"
 	"tdhdbamonithr/src/util"
 	"time"
 )
 
 const(
-	dbaurl=	"https://tdh3:4040/api/inceptor/"
+
+	//KafkaInfomation="****.kafka.******.***:****"
+	//TopicInformation="tdh-dbaInfo"
+	//dbaurl=	"https://***:4040/api/inceptor/"
+
+
+	KafkaInfomation="***.***.***.***:****"
+	TopicInformation="testgo1"
+	Separator string ="|+|"
+	dbaurl=	"https://***:4040/api/inceptor/"
+	token = "="****************"-TDH"
+
+
 	dataKey=	"?dataKey="
 	serverurl = "https://tdh3:4040/api/inceptor/servers"
 	queriesurl = dbaurl + "sqls" + dataKey
 	querysurl= dbaurl + "sql" + dataKey
 	stagetsurl = dbaurl + "stage" + dataKey
-	token = "XxTBdghnvfdPu2zr1NRe-TDH"
+
 )
+
 var (
 	querymaps = make(map[string]entity.Query)
-	delmaps =  make(map[string]string)
+	taskmaps = make(map[string]entity.Task)
+	delmaps =  make(map[string]int64)
+	querymapsGuard sync.RWMutex
+	delmapsGuard sync.RWMutex
+	taskGuard sync.RWMutex
 )
 
-type MyJsonName struct {
-	Data []interface{}  `json:"data"`
-	Error []interface{} `json:"error"`
-	Info  []interface{} `json:"info"`
-	Query struct {
-		DataKey  interface{} `json:"dataKey"`
-		DataSize int64       `json:"dataSize"`
-		ID       int64       `json:"id"`
-		StringID interface{} `json:"stringId"`
-	} `json:"query"`
-	Warning           []interface{} `json:"warning"`
-	WatchmanTimestamp int64         `json:"watchmanTimestamp"`
-}
 
-func crawserverpage (c chan map[int]entity.JsonServer){
-	for {
-	dataType, _ := json.Marshal(util.JsonUnmarshalByString(util.CrawlPage(serverurl, token))["data"])
-	c <- entity.MapByJson(string(dataType))
-		time.Sleep(time.Minute)
-	}
-}
-func crawquerypage (cquerymap chan map[string]entity.Query,serverKey string){
-	for {
-		serverqueryurl := queriesurl + serverKey + "&dataSize=100"
-		var queies entity.JsonQuery1
-		err := json.Unmarshal([]byte(util.CrawlPage(serverqueryurl, token)), &queies)
-		if err != nil {
-			panic(err)
-		}
-		cquerymap <- entity.GetQueriesList(queies)
-		time.Sleep(time.Second*5)
-	}
-}
+
 
 
 func main() {
 
 	now := util.UnixMillTime(time.Now().UnixNano())
 	fmt.Println(now)
+
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	config.Producer.Partitioner = sarama.NewRandomPartitioner
+	producer,err := sarama.NewSyncProducer([]string{KafkaInfomation},config)
+	if err != nil {
+		panic(err)
+	}
+
+
 	//Get lastserver map info    后续切片并发需存入redis做并发访问池
 	cservermap :=make(chan map[int]entity.JsonServer)
 	//爬server列表（只保留最近一次启动）
-	go 	crawserverpage(cservermap)
-	//Test  query数据量太大，需定时器定时获取
+	go 	crawldetilspage.CrawServerPage(cservermap,serverurl,token)
+
 	cquerymap :=make(chan map[string]entity.Query)
 	//爬query列表（增量map）
-	go func() {
-		for {
-			fmt.Println(time.Now())
-			for _, serverinfo := range <-cservermap {
-			go crawquerypage(cquerymap,serverinfo.DataKey)
-			}
-			time.Sleep(time.Second*5)
-		}}()
+	go querymap.GetQueryMap(cquerymap,cservermap,queriesurl,token,"100",time.Second*5)
+
+
+	//解析querymap 爬取stage关键页获取task信息
 	go func() {
 		for {
 			for k,v :=range <- cquerymap {
-				querymaps[k]=v
-			}
-			for k,v :=range querymaps {
-				if 	util.FilterByUnixtime(v.SubmissionTime,1,"minute") {
-					delmaps[k]=k
+				_,ok := querymaps[k]
+				if !ok {
+					querymapsGuard.Lock()
+					querymaps[k]=v
+					querymapsGuard.Unlock()
 				}
 			}
 
-			fmt.Println(querymaps)
-			fmt.Println(len(querymaps))
-			time.Sleep(time.Second * 5)
-		}
-	}()
-
-
-	go func() {
-		for {
-			for _, v := range delmaps {
-				delete(querymaps, v)
+			for k,v :=range querymaps {
+				//fmt.Println("berore:",k,querymaps[k])
+				querymapsGuard.Lock()
+				querymaps[k] =crawldetilspage.CrawServerPageFindStages(v,querysurl,token)
+				querymapsGuard.Unlock()
+				//fmt.Println("after:",k,querymaps[k])
 			}
+
 			time.Sleep(time.Second * 5)
 		}
 	}()
+
+
+
+
+	// 判断querymap如何清理 确定清理逻辑 推送key至delmap中
+	go func(){
+		for {
+			querymapsGuard.Lock()
+
+			for k, v := range querymaps {
+				 if !(v.Stages == nil) || (v.CrawlMessage != "") {
+					if (v.TaskInfo == nil) && (v.CrawlMessage == ""){
+					querymaps[k] = crawldetilspage.CrawStagePage(v,stagetsurl,token,taskGuard,taskmaps)
+					}else {
+						if 	util.FilterByUnixtime(v.SubmissionTime,3,"minute") {
+							aa := querymaps[k]
+							aa.CrawlMessage="CrawlSuccess"
+							delmaps[k]=util.UnixMillTime(time.Now().UnixNano())
+						}
+					}
+				}
+				if v.Stages == nil || v.TaskInfo == nil {
+					 aa := querymaps[k]
+						aa.CrawlMessage="CrawlERR_NotFoundStages"
+					 querymaps[k]=aa
+				}
+				if 	util.FilterByUnixtime(v.SubmissionTime,3,"minute") {
+					aa := querymaps[k]
+					if  v.Stages == nil || v.TaskInfo == nil {
+						aa.CrawlMessage = "CrawlWARN_NoDetailInfo"
+					}else {
+						aa.CrawlMessage = "CrawlWARN_Timeout"
+					}
+					delmaps[k]=util.UnixMillTime(time.Now().UnixNano())
+				}
+			}
+			querymapsGuard.Unlock()
+			fmt.Println("lentaskmap:",len(taskmaps),"lenquerymap",len(querymaps),"lendelmap",len(delmaps))
+			//fmt.Println("taskmap:",len(taskmaps),taskmaps)
+			fmt.Println("querymap:",len(querymaps),querymaps)
+			time.Sleep(time.Second * 5)
+		}
+	}()
+
+
+
+	//清理符合规定的sql清单
+	go querymap.CleanQueryMap(querymaps,delmaps,querymapsGuard,delmapsGuard,producer,TopicInformation,time.Second * 5)
+
+
 
 	//fmt.Println(querymap)
 
@@ -117,8 +158,10 @@ func main() {
 
 
 	for {
-		fmt.Println("delmap:",len(delmaps),delmaps,len(delmaps))
-		time.Sleep(time.Second*5)
+		//delmapsGuard.RLock()
+		//fmt.Println("delmap:",len(delmaps),delmaps,len(delmaps))
+		//delmapsGuard.RUnlock()
+		time.Sleep(time.Hour*999)
 	}
 
 
