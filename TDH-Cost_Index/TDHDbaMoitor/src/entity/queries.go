@@ -79,30 +79,43 @@ type JsonQuery1 struct {
 	WatchmanTimestamp int64         `json:"watchmanTimestamp"`
 }
 
+type JsonQueryStageInfo struct {
+	Data struct {
+		SqlID                         int64         `json:"sqlId"`
+		Stages                        []struct {
+			//Stages []struct {
+			//	StageID        int64       `json:"stageId"`
+			//} `json:"attempts"`
+			StageID        int64       `json:"stageId"`
+		} `json:"stages"`
+	} `json:"data"`
+}
 
 type Query struct {
+	ServerKey 			string
 	SqlID 				int64
 	State				string
 	Stages              []int64
+	TaskInfo			[]StageTaskInfo
 	User				string
 	Description			string
 	SubmissionTime		int64
 	CompletionTime      int64
 	Message				string
+	CrawlMessage		string
 
 }
 
-func GetQueriesList (queies JsonQuery1) map[string]Query{
+func GetQueriesList (queies JsonQuery1,serverKey string) map[string]Query{
 
 	querymap  := make(map[string]Query)
-		//fmt.Printf("%T",queies.Data)s
 	for _,v :=range queies.Data{
 		if util.FilterBySQL(v.Description) ||
 			util.FilterByUnixtime(v.SubmissionTime,40,"secound") ||
 			util.FilterByState(v.State){
 		}else {
-
 		var query Query
+		query.ServerKey=serverKey
 		query.SqlID=v.SqlID
 		query.State=v.State
 		query.CompletionTime=v.CompletionTime
@@ -112,7 +125,6 @@ func GetQueriesList (queies JsonQuery1) map[string]Query{
 		query.Message=v.Message
 		querymap [queies.Query.DataKey+"||"+strconv.FormatInt(v.SqlID,10)]=query
 	}
-
 	}
 	return querymap
 }
