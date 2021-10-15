@@ -11,9 +11,6 @@ func CrawlPage(url string,token string)string{
 	client :=&http.Client{Transport:tr}
 	request,err := http.NewRequest("GET",url,nil)
 	request.Header.Add("Guardian-Access-Token",token)
-
-	//获取prometheus   每分钟cpu占比信息
-	//resp, err := http.Get(url)
 	resp,_ := client.Do(request)
 	//判空报错
 	if err != nil {
