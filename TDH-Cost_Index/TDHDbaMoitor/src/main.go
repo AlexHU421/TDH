@@ -37,9 +37,10 @@ var (
 	querymaps = make(map[string]entity.Query)
 	taskmaps = make(map[string]entity.Task)
 	delmaps =  make(map[string]int64)
-	querymapsGuard sync.RWMutex
+	querymapsGuard sync.Mutex
+	cquerymapsGuard sync.RWMutex
 	delmapsGuard sync.RWMutex
-	taskGuard sync.RWMutex
+
 )
 
 
@@ -67,12 +68,14 @@ func main() {
 
 	cquerymap :=make(chan map[string]entity.Query)
 	//爬query列表（增量map）
-	go querymap.GetQueryMap(cquerymap,cservermap,queriesurl,token,"100",time.Second*5)
-
+	cquerymapsGuard.Lock()
+	go querymap.GetQueryMap(cquerymap,cservermap,queriesurl,token,"1000",time.Second*5)
+	cquerymapsGuard.Unlock()
 
 	//解析querymap 爬取stage关键页获取task信息
 	go func() {
 		for {
+			cquerymapsGuard.RLock()
 			for k,v :=range <- cquerymap {
 				_,ok := querymaps[k]
 				if !ok {
@@ -81,7 +84,7 @@ func main() {
 					querymapsGuard.Unlock()
 				}
 			}
-
+			cquerymapsGuard.RUnlock()
 			for k,v :=range querymaps {
 				//fmt.Println("berore:",k,querymaps[k])
 				querymapsGuard.Lock()
@@ -103,44 +106,39 @@ func main() {
 			querymapsGuard.Lock()
 
 			for k, v := range querymaps {
-				 if !(v.Stages == nil) || (v.CrawlMessage != "") {
-					if (v.TaskInfo == nil) && (v.CrawlMessage == ""){
-					querymaps[k] = crawldetilspage.CrawStagePage(v,stagetsurl,token,taskGuard,taskmaps)
-					}else {
-						if 	util.FilterByUnixtime(v.SubmissionTime,3,"minute") {
-							aa := querymaps[k]
-							aa.CrawlMessage="CrawlSuccess"
-							delmaps[k]=util.UnixMillTime(time.Now().UnixNano())
-						}
+				 if len(v.Stages)>0 && len(v.TaskInfo)==0 {
+				 	if (v.CrawlMessage == "")   {
+						 querymaps[k] = crawldetilspage.CrawStagePage(v,stagetsurl,token,producer,TopicInformation,Separator)
 					}
-				}
-				if v.Stages == nil || v.TaskInfo == nil {
+				}else if len(v.Stages)==0 && (v.CrawlMessage == "") {
 					 aa := querymaps[k]
-						aa.CrawlMessage="CrawlERR_NotFoundStages"
-					 querymaps[k]=aa
-				}
-				if 	util.FilterByUnixtime(v.SubmissionTime,3,"minute") {
-					aa := querymaps[k]
-					if  v.Stages == nil || v.TaskInfo == nil {
-						aa.CrawlMessage = "CrawlWARN_NoDetailInfo"
-					}else {
-						aa.CrawlMessage = "CrawlWARN_Timeout"
-					}
+					 aa.CrawlMessage = "CrawlWARN_NoStagesInfo"
+					 querymaps[k] = aa
+				 }
+
+
+				if !(v.CrawlMessage == "")  && util.FilterByUnixtime(v.SubmissionTime,8,"minute"){
 					delmaps[k]=util.UnixMillTime(time.Now().UnixNano())
 				}
 			}
+
+			fmt.Println("lenquerymap",len(querymaps))
+			delmapsGuard.RLock()
+			fmt.Println("lendelmap",len(delmaps))
+			delmapsGuard.RUnlock()
 			querymapsGuard.Unlock()
-			fmt.Println("lentaskmap:",len(taskmaps),"lenquerymap",len(querymaps),"lendelmap",len(delmaps))
-			//fmt.Println("taskmap:",len(taskmaps),taskmaps)
-			fmt.Println("querymap:",len(querymaps),querymaps)
 			time.Sleep(time.Second * 5)
 		}
 	}()
 
 
 
+
+
+
+
 	//清理符合规定的sql清单
-	go querymap.CleanQueryMap(querymaps,delmaps,querymapsGuard,delmapsGuard,producer,TopicInformation,time.Second * 5)
+	go querymap.CleanQueryMap(querymaps,delmaps,querymapsGuard,delmapsGuard,producer,TopicInformation,Separator,time.Second * 5)
 
 
 
