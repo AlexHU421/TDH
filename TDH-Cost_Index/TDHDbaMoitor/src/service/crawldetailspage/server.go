@@ -2,7 +2,6 @@ package crawldetilspage
 
 import (
 	"encoding/json"
-	"strconv"
 	"tdhdbamonithr/src/entity"
 	"tdhdbamonithr/src/util"
 	"time"
@@ -17,7 +16,7 @@ func CrawServerPage (c chan map[int]entity.JsonServer,serverurl string,token str
 }
 
 func CrawServerPageFindStages (query entity.Query,querysurl string ,token string) entity.Query{
-	querystages := querysurl  + query.ServerKey + "&id=" +strconv.FormatInt(query.SqlID,10)
+	querystages := querysurl  + query.ServerKey + "&id=" + util.Int64ToString(query.SqlID)
 	var relquery entity.JsonQueryStageInfo
 	err :=json.Unmarshal([]byte(util.CrawlPage(querystages, token)), &relquery)
 	if err != nil {
