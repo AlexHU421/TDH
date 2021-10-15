@@ -1,7 +1,9 @@
 package entity
 
 import (
+	"strconv"
 	"sync"
+	"tdhdbamonithr/src/util"
 )
 
 type JsonStage struct {
@@ -120,6 +122,7 @@ type JsonStage struct {
 
 
 type StageTaskInfo struct {
+	TaskID              int64
 	StageID 			int64
 	SqlID				int64
 	Status				string
@@ -129,7 +132,36 @@ type StageTaskInfo struct {
 	CompletionTime		int64
 }
 
+func TaskInfoListSplitToString (ServerKey string,tl []StageTaskInfo) string{
+	if tl == nil {
+		return "[]"
+	}
+	str := "["
+	for i := 0; i < len(tl); i++ {
+		str +=ServerKey	+	"||"	+
+			util.Int64ToString(tl[i].SqlID)		+	"||"	+
+			tl[i].Host +	"||"	+
+			util.Int64ToString(tl[i].TaskID)	+	"||"	+
+			util.Int64ToString(tl[i].SubmissionTime)	+	","
+	}
 
+	return  str[:len(str)-1] +"]"
+}
+
+func StagesListToString (il []int64) string {
+	if il == nil {
+		return "[]"
+	}
+	b := "["
+	if len(il) == 0 {
+		return b+"]"
+	} else {
+		for i := 0; i < len(il); i++ {
+			b += strconv.FormatInt(il[i], 10) + ","
+		}
+		return b[:len(b)-1] +"]"
+	}
+}
 
 func GeTaskList (jsstage JsonStage) map[int]StageTaskInfo {
 	var n sync.WaitGroup
@@ -140,6 +172,7 @@ func GeTaskList (jsstage JsonStage) map[int]StageTaskInfo {
 		go func (i int, n *sync.WaitGroup){
 			defer n.Done()
 			var task StageTaskInfo
+			task.TaskID=jsstage.Data.Tasks[i].TaskID
 			task.StageID=jsstage.Data.StageID
 			task.SqlID=jsstage.Data.SqlID
 			task.Status=jsstage.Data.Status
