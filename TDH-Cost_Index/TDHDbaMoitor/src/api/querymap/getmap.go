@@ -17,4 +17,5 @@ func GetQueryMap(cquerymap chan map[string]entity.Query,
 			go crawldetilspage.CrawQueryPage(cquerymap,queriesurl,token,serverinfo.DataKey,batchsize)
 		}
 		time.Sleep(looptime)
-	}}
+	}
+}
