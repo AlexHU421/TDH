@@ -65,7 +65,7 @@ type JsonQuery1 struct {
 		TotalTaskTime                 int64       `json:"totalTaskTime"`
 		User                          string      `json:"user"`
 	} `json:"data"`
-	Error []interface{} `json:"error"`
+	Error []string `json:"error"`
 	Info  []interface{} `json:"info"`
 	Query struct {
 		DataKey  string      `json:"dataKey"`
@@ -127,4 +127,20 @@ func GetQueriesList (queies JsonQuery1,serverKey string) map[string]Query{
 	}
 	}
 	return querymap
+}
+
+func QueryToStringBySeparator (query Query,separator string)string {
+	return "query"+	separator	+query.ServerKey	+	separator	+
+		util.Int64ToString(query.SqlID)	+	separator	+
+		query.State	+	separator	+
+		StagesListToString(query.Stages) +	separator	+
+		TaskInfoListSplitToString(query.ServerKey,query.TaskInfo) +	separator	+
+		query.User +	separator	+
+		query.Description +	separator	+
+		util.Int64ToString(query.SubmissionTime) +	separator	+
+		util.Int64ToString(query.CompletionTime) +	separator	+
+		query.Message +	separator	+
+		query.CrawlMessage
+
+
 }
