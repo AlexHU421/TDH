@@ -14,19 +14,18 @@ import (
 const(
 
 	//KafkaInfomation="****.kafka.******.***:****"
-	//TopicInformation="tdh-dbaInfo"
+	//TopicInformation=="****"
 	//dbaurl=	"https://***:4040/api/inceptor/"
-
+	mysqlconn = "**:********@tcp(***.***.***.***:***:******)"
 
 	KafkaInfomation="***.***.***.***:****"
-	TopicInformation="testgo1"
+	TopicInformation="****"
 	Separator string ="|+|"
 	dbaurl=	"https://***:4040/api/inceptor/"
 	token = "="****************"-TDH"
 
-
+	Separator string ="|+|"
 	dataKey=	"?dataKey="
-	serverurl = "https://tdh3:4040/api/inceptor/servers"
 	queriesurl = dbaurl + "sqls" + dataKey
 	querysurl= dbaurl + "sql" + dataKey
 	stagetsurl = dbaurl + "stage" + dataKey
@@ -48,6 +47,9 @@ var (
 
 
 func main() {
+
+	wftasklist := entity.GetWfTaskList("select taskid,wfid,name,configuration from taskinfo ",mysqlconn)
+
 
 	now := util.UnixMillTime(time.Now().UnixNano())
 	fmt.Println(now)
@@ -117,7 +119,7 @@ func main() {
 				 }
 
 
-				if !(v.CrawlMessage == "")  && util.FilterByUnixtime(v.SubmissionTime,8,"minute"){
+				if !(v.CrawlMessage == "")  && util.FilterByUnixtime(v.SubmissionTime,5,"minute"){
 					delmaps[k]=util.UnixMillTime(time.Now().UnixNano())
 				}
 			}
@@ -131,58 +133,18 @@ func main() {
 		}
 	}()
 
-
-
-
-
-
-
 	//清理符合规定的sql清单
-	go querymap.CleanQueryMap(querymaps,delmaps,querymapsGuard,delmapsGuard,producer,TopicInformation,Separator,time.Second * 5)
-
-
-
+	go querymap.CleanQueryMap(querymaps,delmaps,wftasklist,querymapsGuard,delmapsGuard,producer,TopicInformation,Separator,time.Second * 5)
+	
 	//fmt.Println(querymap)
-
-
-
-
-
-
-
-
-
-
-
 
 	for {
 		//delmapsGuard.RLock()
 		//fmt.Println("delmap:",len(delmaps),delmaps,len(delmaps))
 		//delmapsGuard.RUnlock()
-		time.Sleep(time.Hour*999)
+		time.Sleep(time.Minute*30)
+		break;
 	}
 
-
-
-	//
-	//
-	//
-	////获取stage相关详情，得到executor信息
-	//
-	////stagequeryurl := stagetsurl + "Inceptor::tdh2::7fd73b47-8aec-4668-951e-8c8a72255832" + "&id=10119"
-	//stagequeryurl := stagetsurl + "Inceptor::tdh2::7fd73b47-8aec-4668-951e-8c8a72255832" + "&id=12447"
-	////fmt.Println(util.CrawlPage(stagequeryurl, token))
-	////fmt.Println(stagequeryurl)
-	//
-	//
-	////Get querymap info    后续切片并发需存入redis做并发访问池
-	//taskmap := make(map[int]entity.Task)
-	//var stage entity.JsonStage
-	//err = json.Unmarshal([]byte(util.CrawlPage(stagequeryurl, token)), &stage)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//taskmap = entity.GeTaskList(stage)
-	//fmt.Println(taskmap)
 
 }
