@@ -1,8 +1,10 @@
 package entity
 
 import (
+	"fmt"
 	"strconv"
 	"tdhdbamonithr/src/util"
+	"time"
 )
 
 type JsonQuery1 struct {
@@ -129,16 +131,21 @@ func GetQueriesList (queies JsonQuery1,serverKey string) map[string]Query{
 	return querymap
 }
 
-func QueryToStringBySeparator (query Query,separator string)string {
-	return "query"+	separator	+query.ServerKey	+	separator	+
+func QueryToStringBySeparator (query Query,separator string,wftasklist map[string]Wftaskinfo)string {
+		fmt.Println()
+	return "query"+	separator	+
+		query.ServerKey	+"||"+util.Int64ToString(query.SqlID)+"||"+util.Int64ToString(query.SubmissionTime)	+	separator	+
+		query.ServerKey	+	separator	+
 		util.Int64ToString(query.SqlID)	+	separator	+
 		query.State	+	separator	+
 		StagesListToString(query.Stages) +	separator	+
 		TaskInfoListSplitToString(query.ServerKey,query.TaskInfo) +	separator	+
 		query.User +	separator	+
 		query.Description +	separator	+
+		time.Unix(query.SubmissionTime/1000,0).Format("2006-01-02") +	separator	+
 		util.Int64ToString(query.SubmissionTime) +	separator	+
 		util.Int64ToString(query.CompletionTime) +	separator	+
+		GetSimilaryListInFo(util.CleanNewlineChart(query.Description),wftasklist,separator)  +	separator	+
 		query.Message +	separator	+
 		query.CrawlMessage
 
