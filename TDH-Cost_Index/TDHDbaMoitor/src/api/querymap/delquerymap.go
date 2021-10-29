@@ -10,6 +10,7 @@ import (
 
 func CleanQueryMap (querymaps map[string]entity.Query,
 					delmaps map[string]int64,
+					wftasklist map[string]entity.Wftaskinfo,
 					querymapsGuard sync.Mutex,
 					delmapsGuard sync.RWMutex,
 					producer sarama.SyncProducer,
@@ -20,7 +21,9 @@ func CleanQueryMap (querymaps map[string]entity.Query,
 		for k, _ := range delmaps {
 			querymapsGuard.Lock()
 			delmapsGuard.Lock()
-			util.ProduceSendMsg(util.CleanNewlineChart(entity.QueryToStringBySeparator(querymaps[k],Separator)),producer,TopicInformation,)
+			util.ProduceSendMsg(
+				util.CleanNewlineChart(
+					entity.QueryToStringBySeparator(querymaps[k],Separator,wftasklist)),producer,TopicInformation,)
 			delete(querymaps, k)
 			delete(delmaps,k)
 			querymapsGuard.Unlock()
