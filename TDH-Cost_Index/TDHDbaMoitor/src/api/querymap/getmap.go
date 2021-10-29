@@ -19,3 +19,4 @@ func GetQueryMap(cquerymap chan map[string]entity.Query,
 		time.Sleep(looptime)
 	}
 }
+
